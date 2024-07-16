@@ -19,7 +19,7 @@ namespace DocLicenseLookupApi
         private readonly string _firstName;
         private readonly bool _isDOSearch;
         private AsyncRetryPolicy _retryPolicy;
-        private const string openAiApiKey = "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";
+        private const string openAiApiKey = "";
 
         public DocLicenseLookupData(string lastName, string firstName = "", bool isDoSearch = false)
         {
