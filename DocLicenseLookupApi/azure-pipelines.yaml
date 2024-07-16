@@ -1,0 +1,62 @@
+﻿# This pipeline will be manually triggered
+# Remove automatic triggers
+# trigger:
+# - master
+
+# Uncomment if you want to disable pull request validation builds as well
+# pr:
+# - none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  buildPlatform: 'Any CPU'
+  dockerRegistryServiceConnection: 'docker-container-registry-connection' # Your Docker Registry Service Connection
+  imageRepository: 'doclicenselookupapi' # Your Docker image repository name
+  containerRegistry: 'doclicenselookupapi20240119105837.azurecr.io' # Your Azure Container Registry URL
+  dockerfilePath: 'DocLicenseLookupApi/Dockerfile' # Path to your Dockerfile
+  tag: '$(Build.BuildId)'
+
+steps:
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '7.0.x' # specify the .NET 7 SDK version you are using
+    installationPath: $(Agent.ToolsDirectory)/dotnet
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'restore'
+    projects: 'DocLicenseLookupApi/DocLicenseLookupApi.csproj'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: 'DocLicenseLookupApi/DocLicenseLookupApi.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    projects: 'DocLicenseLookupApi/DocLicenseLookupApi.csproj'
+    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+
+- task: Docker@2
+  inputs:
+    containerRegistry: '$(dockerRegistryServiceConnection)'
+    repository: '$(imageRepository)'
+    command: 'buildAndPush'
+    Dockerfile: '$(dockerfilePath)'
+    buildContext: '$(Build.SourcesDirectory)'
+    tags: |
+      $(tag)
+
+- task: AzureWebAppContainer@1
+  inputs:
+    azureSubscription: 'azure-resource-manager-connection' # Your Azure Resource Manager Service Connection
+    appName: 'DocLicenseLookupApi20240119105712'
+    imageName: '$(containerRegistry)/$(imageRepository):$(tag)'
+    resourceGroupName: 'DefaultResourceGroup-EUS'
+    slotName: 'production'
